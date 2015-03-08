@@ -42,10 +42,10 @@ impl <T> IndexedVec<T> {
         }
     }
 
-    fn do_push(&mut self, value: T) -> Result<Index, T> {
+    fn do_push(&mut self, value: T) -> Index {
         let len = self.mem.len();
         self.mem.push(value);
-        Ok(Index(self.instance, len))
+        Index(self.instance, len)
     }
 
     fn do_fill(&mut self, value: T) -> Result<Index, T> {
@@ -76,9 +76,9 @@ impl <T> IndexedVec<T> {
     ///
     /// This function prefers to fill up holes in the array
     /// left by removing other items.
-    pub fn add(&mut self, value: T) -> Result<Index, T> {
+    pub fn add(&mut self, value: T) -> Index {
         let value = match self.do_fill(value) {
-            Ok(i) => return Ok(i),
+            Ok(i) => return i,
             Err(v) => v
         };
         self.do_push(value)
@@ -87,13 +87,14 @@ impl <T> IndexedVec<T> {
     /// Adds an element to the BoundedVec.
     ///
     /// This function prefers to add elements to the 'end' of the array
-    /// before filling holes.
-    pub fn push(&mut self, value: T) -> Result<Index, T> {
-        let value = match self.do_push(value) {
-            Ok(i) => return Ok(i),
-            Err(v) => v
-        };
-        self.do_fill(value)
+    /// before filling holes. It will fill holes if otherwise a resize
+    /// would be required.
+    pub fn push(&mut self, value: T) -> Index {
+        if self.mem.len() != self.mem.capacity() {
+            self.do_push(value)
+        } else {
+            self.add(value)
+        }
     }
 
     /// Returns a reference to an element in the array.
