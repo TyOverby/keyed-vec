@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `IndexedVec` struct in crate `indexed_vec`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, IndexedVec">
+
+    <title>indexed_vec::IndexedVec - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>indexed_vec</a></p><script>window.sidebarCurrent = {name: 'IndexedVec', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>indexed_vec</a>::<wbr><a class='struct' href=''>IndexedVec</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="#" title="collapse all docs">[&minus;]</a>
+        </span><a id='src-24' class='srclink' href='../src/indexed_vec/lib.rs.html#26-36' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct IndexedVec&lt;T&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>IndexedVec is a vector with a unique approach to indices.
+Once an item is added to the IndexedVec, a <em>unique</em> index is returned.
+This index is the only way that that element may be accessed, and it
+is garunteed by the rust typesystem for there only to be one of these
+indices at one point in time.</p>
+
+<p>This means that we can perform operations that would otherwise be unsafe in
+a perfectly safe maner.  For example, you can grab a mutable reference
+to an element from an immutable IndexedVec.  This is hugely useful in
+multithreaded environments.</p>
+
+<p>Because the Index is garunteed to exist and point to a valid location in
+the backing array, the implementation of IndexedVec can also do lookups
+without bounds checking.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl&lt;T&gt; <a class='struct' href='../indexed_vec/struct.IndexedVec.html' title='indexed_vec::IndexedVec'>IndexedVec</a>&lt;T&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../indexed_vec/struct.IndexedVec.html' title='indexed_vec::IndexedVec'>IndexedVec</a>&lt;T&gt;</code></h4>
+<div class='docblock'><p>Creates a new BoundedArray with a given size.</p>
+</div><h4 id='method.with_capacity' class='method'><code>fn <a href='#method.with_capacity' class='fnname'>with_capacity</a>(capacity: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../indexed_vec/struct.IndexedVec.html' title='indexed_vec::IndexedVec'>IndexedVec</a>&lt;T&gt;</code></h4>
+<h4 id='method.add' class='method'><code>fn <a href='#method.add' class='fnname'>add</a>(&amp;mut self, value: T) -&gt; <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a></code></h4>
+<div class='docblock'><p>Adds an element to the BoundedVec.</p>
+
+<p>This function prefers to fill up holes in the array
+left by removing other items.</p>
+</div><h4 id='method.push' class='method'><code>fn <a href='#method.push' class='fnname'>push</a>(&amp;mut self, value: T) -&gt; <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a></code></h4>
+<div class='docblock'><p>Adds an element to the BoundedVec.</p>
+
+<p>This function prefers to add elements to the &#39;end&#39; of the array
+before filling holes. It will fill holes if otherwise a resize
+would be required.</p>
+</div><h4 id='method.get' class='method'><code>fn <a href='#method.get' class='fnname'>get</a>&lt;'a, 'b, 'c&gt;(&amp;'a self, index: &amp;'b <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a>) -&gt; &amp;'c T</code></h4>
+<div class='docblock'><p>Returns a reference to an element in the array.</p>
+</div><h4 id='method.get_mut' class='method'><code>fn <a href='#method.get_mut' class='fnname'>get_mut</a>&lt;'a, 'b, 'c&gt;(&amp;'a self, index: &amp;'b mut <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a>) -&gt; &amp;'c mut T</code></h4>
+<div class='docblock'><p>Returns a mutable reference to an element in the array.</p>
+</div><h4 id='method.swap' class='method'><code>fn <a href='#method.swap' class='fnname'>swap</a>(&amp;self, index: &amp;mut <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a>, value: T) -&gt; T</code></h4>
+<div class='docblock'><p>Swaps the element at an index, returning the previous value.</p>
+</div><h4 id='method.take' class='method'><code>fn <a href='#method.take' class='fnname'>take</a>(&amp;mut self, index: <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a>) -&gt; T</code></h4>
+<div class='docblock'><p>Remove the element stored at Index location, returning it.</p>
+</div><h4 id='method.remove' class='method'><code>fn <a href='#method.remove' class='fnname'>remove</a>(&amp;mut self, index: <a class='struct' href='../indexed_vec/struct.Index.html' title='indexed_vec::Index'>Index</a>)</code></h4>
+<div class='docblock'><p>Removes the element stored at Index location, dropping it.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;T&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../indexed_vec/struct.IndexedVec.html' title='indexed_vec::IndexedVec'>IndexedVec</a>&lt;T&gt;</code></h3><div class='impl-items'><h4 id='method.drop' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#method.drop' class='fnname'>drop</a>(&amp;mut self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "indexed_vec";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

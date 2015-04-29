@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Index",""],["IndexedVec","IndexedVec is a vector with a unique approach to indices. Once an item is added to the IndexedVec, a _unique_ index is returned. This index is the only way that that element may be accessed, and it is garunteed by the rust typesystem for there only to be one of these indices at one point in time."]]});
