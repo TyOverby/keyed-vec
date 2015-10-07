@@ -3,3 +3,6 @@
 name = "indexed_vec"
 version = "0.0.1"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
+
+[dependencies]
+bit-set = "0.2.*"

@@ -1,29 +1,33 @@
-#![feature(collections)]
+#![allow(mutable_transmutes)]
+#![feature(drain)]
+
+extern crate bit_set;
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
-use std::collections::BitSet;
+use bit_set::BitSet;
 use std::mem::{forget, swap, transmute, zeroed};
 
 static INSTANCE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 // (instance, index)
-pub struct Index(usize, usize);
+pub struct Key(usize, usize);
 
-/// IndexedVec is a vector with a unique approach to indices.
-/// Once an item is added to the IndexedVec, a _unique_ index is returned.
-/// This index is the only way that that element may be accessed, and it
-/// is garunteed by the rust typesystem for there only to be one of these
-/// indices at one point in time.
+/// IndexedVec is a vector with a unique approach to retrieving values from it.
+/// Once an item is added to the IndexedVec, a _unique_ index (called a "key")
+/// is returned.
+/// This key is the only way that that element may be accessed, and it
+/// is garunteed by the rust typesystem for there only to be one of these keys
+/// per object in the KeyedVec.
 ///
 /// This means that we can perform operations that would otherwise be unsafe in
 /// a perfectly safe maner.  For example, you can grab a mutable reference
-/// to an element from an immutable IndexedVec.  This is hugely useful in
+/// to an element from an immutable KeyedVec.  This is hugely useful in
 /// multithreaded environments.
 ///
-/// Because the Index is garunteed to exist and point to a valid location in
-/// the backing array, the implementation of IndexedVec can also do lookups
+/// Because the Key is garunteed to exist and point to a valid location in
+/// the backing array, the implementation of KeyedVec can also do lookups
 /// without bounds checking.
-pub struct IndexedVec<T> {
+pub struct KeyedVec<T> {
     // The backing vector
     mem: Vec<T>,
 
@@ -35,28 +39,28 @@ pub struct IndexedVec<T> {
     open: BitSet,
 }
 
-impl <T> IndexedVec<T> {
+impl <T> KeyedVec<T> {
     /// Creates a new BoundedArray with a given size.
-    pub fn new() -> IndexedVec<T> {
-        IndexedVec::with_capacity(16)
+    pub fn new() -> KeyedVec<T> {
+        KeyedVec::with_capacity(16)
     }
 
-    pub fn with_capacity(capacity: usize) -> IndexedVec<T> {
+    pub fn with_capacity(capacity: usize) -> KeyedVec<T> {
         let instance = INSTANCE_ID.fetch_add(1, Ordering::Relaxed);
-        IndexedVec {
+        KeyedVec {
             mem: Vec::with_capacity(capacity),
             instance: instance,
             open: BitSet::new()
         }
     }
 
-    fn do_push(&mut self, value: T) -> Index {
+    fn do_push(&mut self, value: T) -> Key {
         let len = self.mem.len();
         self.mem.push(value);
-        Index(self.instance, len)
+        Key(self.instance, len)
     }
 
-    fn do_fill(&mut self, value: T) -> Result<Index, T> {
+    fn do_fill(&mut self, value: T) -> Result<Key, T> {
         let hole = self.open.iter().nth(0);
         if let Some(h) = hole {
             self.open.remove(&h);
@@ -73,7 +77,7 @@ impl <T> IndexedVec<T> {
                 // so this value can not be destrucuted.
                 forget(val);
             }
-            Ok(Index(self.instance, h))
+            Ok(Key(self.instance, h))
         } else {
             Err(value)
         }
@@ -90,7 +94,7 @@ impl <T> IndexedVec<T> {
     ///
     /// This function prefers to fill up holes in the array
     /// left by removing other items.
-    pub fn add(&mut self, value: T) -> Index {
+    pub fn add(&mut self, value: T) -> Key {
         let value = match self.do_fill(value) {
             Ok(i) => return i,
             Err(v) => v
@@ -109,7 +113,7 @@ impl <T> IndexedVec<T> {
     /// This function prefers to add elements to the 'end' of the array
     /// before filling holes. It will fill holes if otherwise a resize
     /// would be required.
-    pub fn push(&mut self, value: T) -> Index {
+    pub fn push(&mut self, value: T) -> Key {
         if self.mem.len() != self.mem.capacity() {
             self.do_push(value)
         } else {
@@ -118,24 +122,21 @@ impl <T> IndexedVec<T> {
     }
 
     /// Returns a reference to an element in the array.
-    pub fn get<'a, 'b, 'c: 'a + 'b>(&'a self, index: &'b Index) -> &'c T {
-        let &Index(ins, i) = index;
+    pub fn get<'a>(&'a self, key: &'a Key) -> &'a T {
+        let &Key(ins, i) = key;
         self.assert_instance(ins);
 
         let arr: &'a [T] = &self.mem[..];
 
-        unsafe {
-            // Safe because we are increasing the lifetime, not decreasing it.
-            transmute(
-                // Safe because we know that this index is
-                // occupied (beacause we generated it).
-                arr.get_unchecked(i))
-        }
+        // Safe because we know that this index is
+        // occupied (beacause we generated it).
+        unsafe { arr.get_unchecked(i) }
+
     }
 
     /// Returns a mutable reference to an element in the array.
-    pub fn get_mut<'a, 'b, 'c: 'a + 'b>(&'a self, index: &'b mut Index) -> &'c mut T {
-        let &mut Index(ins, i) = index;
+    pub fn get_mut<'a>(&'a self, key: &'a mut Key) -> &'a mut T {
+        let &mut Key(ins, i) = key;
         self.assert_instance(ins);
 
         unsafe {
@@ -143,28 +144,25 @@ impl <T> IndexedVec<T> {
             // we are the only one that can actually access it.
             let arr: &mut [T] = transmute(&self.mem[..]);
 
-            // Safe because we are just using this to increase the lifetime
-            // bound from 'b, to 'c, not.
-            transmute(
-                // Safe because we know that this index is
-                // occupied (beacause we generated it).
-                arr.get_unchecked_mut(i))
+            // Safe because we know that this index is
+            // occupied (beacause we generated it).
+            arr.get_unchecked_mut(i)
         }
     }
 
     /// Swaps the element at an index, returning the previous value.
-    pub fn swap(&self, index: &mut Index, mut value: T) -> T {
-        self.assert_instance(index.0);
-        swap(self.get_mut(index), &mut value);
+    pub fn swap(&self, key: &mut Key, mut value: T) -> T {
+        self.assert_instance(key.0);
+        swap(self.get_mut(key), &mut value);
         value
     }
 
     /// Remove the element stored at Index location, returning it.
-    pub fn take(&mut self, index: Index) -> T {
-        let Index(ins, i) = index;
+    pub fn take(&mut self, key: Key) -> T {
+        let Key(ins, i) = key;
         self.assert_instance(ins);
 
-        let mut copy = Index(ins, i);
+        let mut copy = Key(ins, i);
 
         let mut out = unsafe { zeroed() };
 
@@ -179,16 +177,16 @@ impl <T> IndexedVec<T> {
     }
 
     /// Removes the element stored at Index location, dropping it.
-    pub fn remove(&mut self, index: Index) {
-        self.take(index);
+    pub fn remove(&mut self, key: Key) {
+        self.take(key);
     }
 }
 
-impl <T> Drop for IndexedVec<T> {
+impl <T> Drop for KeyedVec<T> {
     fn drop(&mut self) {
-        for (i, v) in self.mem.drain().enumerate() {
+        for (i, v) in self.mem.drain(..).enumerate() {
             if self.open.contains(&i) {
-                unsafe{ forget(v); }
+                forget(v);
             } else {
                 drop(v);
             }
